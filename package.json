@@ -93,6 +93,7 @@
   },
   "trustedDependencies": [
     "node-pty",
-    "electron"
+    "electron",
+    "sqlite3"
   ]
 }

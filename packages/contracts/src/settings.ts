@@ -238,10 +238,22 @@ export const CursorSettings = makeProviderSettingsSchema(
       Schema.withDecodingDefault(Effect.succeed(false)),
       Schema.annotateKey({ providerSettingsForm: { hidden: true } }),
     ),
+    apiKey: TrimmedString.pipe(
+      Schema.withDecodingDefault(Effect.succeed("")),
+      Schema.annotateKey({
+        title: "API key",
+        description: "Cursor SDK API key. Stored in plain text on disk.",
+        providerSettingsForm: {
+          control: "password",
+          placeholder: "crsr_...",
+          clearWhenEmpty: "omit",
+        },
+      }),
+    ),
     binaryPath: makeBinaryPathSetting("agent").pipe(
       Schema.annotateKey({
         title: "Binary path",
-        description: "Path to the Cursor agent binary.",
+        description: "Legacy Cursor Agent CLI path. The SDK provider does not use this.",
         providerSettingsForm: { placeholder: "agent", clearWhenEmpty: "omit" },
       }),
     ),
@@ -262,7 +274,7 @@ export const CursorSettings = makeProviderSettingsSchema(
     ),
   },
   {
-    order: ["binaryPath", "apiEndpoint"],
+    order: ["apiKey", "binaryPath", "apiEndpoint"],
   },
 );
 export type CursorSettings = typeof CursorSettings.Type;
@@ -410,6 +422,7 @@ const ClaudeSettingsPatch = Schema.Struct({
 
 const CursorSettingsPatch = Schema.Struct({
   enabled: Schema.optionalKey(Schema.Boolean),
+  apiKey: Schema.optionalKey(Schema.String),
   binaryPath: Schema.optionalKey(Schema.String),
   apiEndpoint: Schema.optionalKey(Schema.String),
   customModels: Schema.optionalKey(Schema.Array(Schema.String)),

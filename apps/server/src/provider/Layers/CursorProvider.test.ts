@@ -329,6 +329,7 @@ const sessionNewCursorConfigOptions = [
 
 const baseCursorSettings: CursorSettings = {
   enabled: true,
+  apiKey: "",
   binaryPath: "agent",
   apiEndpoint: "",
   customModels: [],
@@ -505,6 +506,7 @@ describe("checkCursorProviderStatus", () => {
       checkCursorProviderStatus(
         {
           enabled: true,
+          apiKey: "",
           binaryPath: wrapperPath,
           apiEndpoint: "",
           customModels: [],
@@ -533,6 +535,7 @@ describe("discoverCursorModelsViaAcp", () => {
     const models = await Effect.runPromise(
       discoverCursorModelsViaAcp({
         enabled: true,
+        apiKey: "",
         binaryPath: wrapperPath,
         apiEndpoint: "",
         customModels: [],
@@ -555,6 +558,7 @@ describe("discoverCursorModelsViaAcp", () => {
     await Effect.runPromise(
       discoverCursorModelsViaAcp({
         enabled: true,
+        apiKey: "",
         binaryPath: wrapperPath,
         apiEndpoint: "",
         customModels: [],
@@ -587,6 +591,7 @@ describe("discoverCursorModelCapabilitiesViaAcp", () => {
       discoverCursorModelCapabilitiesViaAcp(
         {
           enabled: true,
+          apiKey: "",
           binaryPath: wrapperPath,
           apiEndpoint: "",
           customModels: [],

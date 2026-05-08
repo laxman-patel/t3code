@@ -80,28 +80,6 @@ exec ${JSON.stringify("bun")} ${JSON.stringify(mockAgentPath)} "$@"
   return wrapperPath;
 });
 
-const makeMockAgentWithAboutWrapper = Effect.fn("makeMockAgentWithAboutWrapper")(function* () {
-  const fileSystem = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const mockAgentPath = yield* resolveMockAgentPath();
-  const dir = yield* fileSystem.makeTempDirectory({
-    directory: NodeOS.tmpdir(),
-    prefix: "cursor-provider-about-mock-",
-  });
-  const wrapperPath = path.join(dir, "fake-agent.sh");
-  const script = `#!/bin/sh
-if [ "$1" = "about" ]; then
-  printf 'CLI Version         2026.04.09-f2b0fcd\\n'
-  printf 'User Email          cursor@example.com\\n'
-  exit 0
-fi
-exec ${JSON.stringify("bun")} ${JSON.stringify(mockAgentPath)} "$@"
-`;
-  yield* fileSystem.writeFileString(wrapperPath, script);
-  yield* fileSystem.chmod(wrapperPath, 0o755);
-  return wrapperPath;
-});
-
 const waitForFileContent = Effect.fn("waitForFileContent")(function* (
   filePath: string,
   attempts = 40,
@@ -119,19 +97,6 @@ const waitForFileContent = Effect.fn("waitForFileContent")(function* (
     yield* Effect.sleep("50 millis");
   }
   return yield* Effect.fail(new Error(`Timed out waiting for file content at ${filePath}`));
-});
-
-const makeProviderStatusEnvFixture = Effect.fn("makeProviderStatusEnvFixture")(function* () {
-  const fileSystem = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const tempDir = yield* fileSystem.makeTempDirectory({
-    directory: NodeOS.tmpdir(),
-    prefix: "cursor-provider-status-env-",
-  });
-  return {
-    requestLogPath: path.join(tempDir, "requests.ndjson"),
-    wrapperPath: yield* makeMockAgentWithAboutWrapper(),
-  };
 });
 
 const makeExitLogFixture = Effect.fn("makeExitLogFixture")(function* (prefix: string) {
@@ -499,32 +464,21 @@ describe("buildCursorDiscoveredModelsFromConfigOptions", () => {
 });
 
 describe("checkCursorProviderStatus", () => {
-  it("passes the injected environment to ACP model discovery", async () => {
-    const { requestLogPath, wrapperPath } = await runNode(makeProviderStatusEnvFixture());
-
+  it("reports a settings warning when the Cursor SDK API key is missing", async () => {
     const provider = await Effect.runPromise(
-      checkCursorProviderStatus(
-        {
-          enabled: true,
-          apiKey: "",
-          binaryPath: wrapperPath,
-          apiEndpoint: "",
-          customModels: [],
-        },
-        {
-          ...process.env,
-          T3_ACP_REQUEST_LOG_PATH: requestLogPath,
-        },
-      ).pipe(Effect.provide(NodeServices.layer)),
+      checkCursorProviderStatus({
+        enabled: true,
+        apiKey: "",
+        binaryPath: "agent",
+        apiEndpoint: "",
+        customModels: [],
+      }).pipe(Effect.provide(NodeServices.layer)),
     );
 
-    expect(provider.models.map((model) => model.slug)).toEqual([
-      "default",
-      "composer-2",
-      "gpt-5.4",
-      "claude-opus-4-6",
-    ]);
-    await expect(runNode(waitForFileContent(requestLogPath))).resolves.toContain("initialize");
+    expect(provider.status).toBe("warning");
+    expect(provider.auth.status).toBe("unauthenticated");
+    expect(provider.message).toContain("Cursor SDK API key is missing");
+    expect(provider.models).toEqual([]);
   });
 });
 

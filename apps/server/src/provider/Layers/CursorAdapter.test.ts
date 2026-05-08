@@ -5,11 +5,10 @@ import {
   type ProviderRuntimeEvent,
   ThreadId,
 } from "@t3tools/contracts";
-import { Effect, Fiber, Layer, Schema, Stream } from "effect";
+import { Cause, Effect, Fiber, Layer, Schema, Scope, Stream } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServerConfig } from "../../config.ts";
-import { ProviderAdapterValidationError } from "../Errors.ts";
 import { makeCursorAdapter } from "./CursorAdapter.ts";
 
 const cursorSdkMock = vi.hoisted(() => ({
@@ -81,13 +80,19 @@ function makeMockAgent(run = makeMockRun()) {
 }
 
 function runAdapterEffect<A, E>(
-  effect: Effect.Effect<A, E, NodeServices.NodeServices | ServerConfig>,
+  effect: Effect.Effect<A, E, NodeServices.NodeServices | ServerConfig | Scope.Scope>,
 ): Promise<A> {
   return Effect.runPromise(
     effect.pipe(
-      Effect.provide(ServerConfig.layerTest(process.cwd())),
-      Effect.provide(NodeServices.layer),
       Effect.scoped,
+      Effect.provide(
+        Layer.mergeAll(
+          NodeServices.layer,
+          ServerConfig.layerTest(process.cwd(), { prefix: "t3-cursor-adapter-test-" }).pipe(
+            Layer.provide(NodeServices.layer),
+          ),
+        ),
+      ),
     ),
   );
 }
@@ -115,7 +120,7 @@ describe("CursorAdapterLive", () => {
 
     expect(exit._tag).toBe("Failure");
     if (exit._tag === "Failure") {
-      expect(ProviderAdapterValidationError.is(exit.cause.failures[0]?.error)).toBe(true);
+      expect(Cause.pretty(exit.cause)).toContain("ProviderAdapterValidationError");
     }
   });
 
@@ -160,7 +165,9 @@ describe("CursorAdapterLive", () => {
           input: "say hello",
         });
 
+        yield* Effect.sleep("10 millis");
         yield* adapter.stopSession(threadId);
+        yield* Effect.sleep("10 millis");
         yield* Fiber.interrupt(eventFiber);
 
         expect(session.resumeCursor).toEqual({ schemaVersion: 2, agentId: "agent-1" });
@@ -206,7 +213,7 @@ describe("CursorAdapterLive", () => {
 
     expect(cursorSdkMock.resume).toHaveBeenCalledWith("agent-existing", {
       apiKey: "test-cursor-api-key",
-      model: { id: "composer-2" },
+      model: { id: "default" },
       local: { cwd: process.cwd() },
     });
   });

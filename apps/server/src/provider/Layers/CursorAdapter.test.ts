@@ -222,6 +222,41 @@ describe("CursorAdapterLive", () => {
     });
   });
 
+  it("uses the resume cursor runtime instead of current settings when resuming", async () => {
+    const agent = makeMockAgent();
+    cursorSdkMock.resume.mockResolvedValue(agent);
+
+    await runAdapterEffect(
+      Effect.gen(function* () {
+        const adapter = yield* makeCursorAdapter(
+          makeCursorSettings({
+            cloudEnabled: true,
+            cloudRepositoryUrl: "https://github.com/acme/widgets",
+          }),
+        );
+        const session = yield* adapter.startSession({
+          provider: PROVIDER,
+          threadId: ThreadId.make("cursor-sdk-local-resume-with-cloud-enabled"),
+          cwd: process.cwd(),
+          runtimeMode: "approval-required",
+          resumeCursor: { schemaVersion: 2, agentId: "agent-existing", runtime: "local" },
+        });
+
+        expect(session.resumeCursor).toEqual({
+          schemaVersion: 2,
+          agentId: "agent-1",
+          runtime: "local",
+        });
+      }),
+    );
+
+    expect(cursorSdkMock.resume).toHaveBeenCalledWith("agent-existing", {
+      apiKey: "test-cursor-api-key",
+      model: { id: "default" },
+      local: { cwd: process.cwd() },
+    });
+  });
+
   it("creates an SDK cloud agent when Cursor cloud agents are enabled", async () => {
     const agent = makeMockAgent();
     cursorSdkMock.create.mockResolvedValue(agent);

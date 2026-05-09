@@ -471,6 +471,10 @@ const CursorSettingsPatch = Schema.Struct({
   apiKey: Schema.optionalKey(Schema.String),
   binaryPath: Schema.optionalKey(Schema.String),
   apiEndpoint: Schema.optionalKey(Schema.String),
+  cloudEnabled: Schema.optionalKey(Schema.Boolean),
+  cloudRepositoryUrl: Schema.optionalKey(Schema.String),
+  cloudStartingRef: Schema.optionalKey(Schema.String),
+  cloudAutoCreatePr: Schema.optionalKey(Schema.Boolean),
   customModels: Schema.optionalKey(Schema.Array(Schema.String)),
 });
 

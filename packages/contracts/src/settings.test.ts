@@ -92,3 +92,25 @@ describe("ServerSettingsPatch.providerInstances", () => {
     expect(patch.providerInstances?.[ollamaId]?.driver).toBe("ollama");
   });
 });
+
+describe("ServerSettingsPatch.providers.cursor", () => {
+  it("accepts Cursor Cloud provider settings", () => {
+    const patch = decodeServerSettingsPatch({
+      providers: {
+        cursor: {
+          cloudEnabled: true,
+          cloudRepositoryUrl: "https://github.com/acme/widgets",
+          cloudStartingRef: "main",
+          cloudAutoCreatePr: true,
+        },
+      },
+    });
+
+    expect(patch.providers?.cursor).toEqual({
+      cloudEnabled: true,
+      cloudRepositoryUrl: "https://github.com/acme/widgets",
+      cloudStartingRef: "main",
+      cloudAutoCreatePr: true,
+    });
+  });
+});

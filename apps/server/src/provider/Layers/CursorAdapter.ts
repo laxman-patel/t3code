@@ -90,9 +90,11 @@ function parseCursorSdkResume(raw: unknown): CursorSdkResumeCursor | undefined {
   if (!isRecord(raw)) return undefined;
   if (raw.schemaVersion !== CURSOR_SDK_RESUME_VERSION) return undefined;
   if (typeof raw.agentId !== "string" || !raw.agentId.trim()) return undefined;
+  const runtime = raw.runtime === "cloud" || raw.runtime === "local" ? raw.runtime : undefined;
   return {
     schemaVersion: CURSOR_SDK_RESUME_VERSION,
     agentId: raw.agentId.trim(),
+    ...(runtime ? { runtime } : {}),
   };
 }
 
@@ -108,8 +110,11 @@ function requireApiKey(settings: CursorSettings, operation: string): string {
   return apiKey;
 }
 
-function resolveCursorSdkRuntime(settings: CursorSettings): "local" | "cloud" {
-  return settings.cloudEnabled ? "cloud" : "local";
+function resolveCursorSdkRuntime(
+  settings: CursorSettings,
+  resume: CursorSdkResumeCursor | undefined,
+): "local" | "cloud" {
+  return resume?.runtime ?? (settings.cloudEnabled ? "cloud" : "local");
 }
 
 function buildCursorSdkAgentOptions(input: {
@@ -118,8 +123,9 @@ function buildCursorSdkAgentOptions(input: {
   readonly model: CursorSdkModelSelection;
   readonly cwd: string;
   readonly operation: string;
+  readonly runtime: "local" | "cloud";
 }): AgentOptions {
-  if (!input.settings.cloudEnabled) {
+  if (input.runtime === "local") {
     return {
       apiKey: input.apiKey,
       model: input.model,
@@ -368,13 +374,14 @@ export function makeCursorAdapter(
           input.modelSelection?.instanceId === boundInstanceId ? input.modelSelection : undefined;
         const model = cursorSdkModelSelection(selected?.model, selected?.options);
         const resume = parseCursorSdkResume(input.resumeCursor);
-        const runtime = resolveCursorSdkRuntime(settings);
+        const runtime = resolveCursorSdkRuntime(settings, resume);
         const agentOptions = buildCursorSdkAgentOptions({
           settings,
           apiKey,
           model,
           cwd,
           operation: "startSession",
+          runtime,
         });
 
         const agent = yield* Effect.tryPromise({

@@ -297,6 +297,10 @@ const baseCursorSettings: CursorSettings = {
   apiKey: "",
   binaryPath: "agent",
   apiEndpoint: "",
+  cloudEnabled: false,
+  cloudRepositoryUrl: "",
+  cloudStartingRef: "",
+  cloudAutoCreatePr: false,
   customModels: [],
 };
 
@@ -467,11 +471,7 @@ describe("checkCursorProviderStatus", () => {
   it("reports a settings warning when the Cursor SDK API key is missing", async () => {
     const provider = await Effect.runPromise(
       checkCursorProviderStatus({
-        enabled: true,
-        apiKey: "",
-        binaryPath: "agent",
-        apiEndpoint: "",
-        customModels: [],
+        ...baseCursorSettings,
       }).pipe(Effect.provide(NodeServices.layer)),
     );
 
@@ -488,11 +488,8 @@ describe("discoverCursorModelsViaAcp", () => {
 
     const models = await Effect.runPromise(
       discoverCursorModelsViaAcp({
-        enabled: true,
-        apiKey: "",
+        ...baseCursorSettings,
         binaryPath: wrapperPath,
-        apiEndpoint: "",
-        customModels: [],
       }).pipe(Effect.provide(NodeServices.layer), Effect.scoped),
     );
 
@@ -511,11 +508,8 @@ describe("discoverCursorModelsViaAcp", () => {
 
     await Effect.runPromise(
       discoverCursorModelsViaAcp({
-        enabled: true,
-        apiKey: "",
+        ...baseCursorSettings,
         binaryPath: wrapperPath,
-        apiEndpoint: "",
-        customModels: [],
       }).pipe(Effect.provide(NodeServices.layer)),
     );
 
@@ -544,11 +538,8 @@ describe("discoverCursorModelCapabilitiesViaAcp", () => {
     const models = await Effect.runPromise(
       discoverCursorModelCapabilitiesViaAcp(
         {
-          enabled: true,
-          apiKey: "",
+          ...baseCursorSettings,
           binaryPath: wrapperPath,
-          apiEndpoint: "",
-          customModels: [],
         },
         existingModels,
       ).pipe(Effect.provide(NodeServices.layer)),

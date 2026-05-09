@@ -75,6 +75,10 @@ const makeCursorConfig = (overrides: Partial<CursorSettings>): CursorSettings =>
   apiKey: "",
   binaryPath: "agent",
   apiEndpoint: "",
+  cloudEnabled: false,
+  cloudRepositoryUrl: "",
+  cloudStartingRef: "",
+  cloudAutoCreatePr: false,
   customModels: [],
   ...overrides,
 });

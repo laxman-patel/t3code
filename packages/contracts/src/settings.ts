@@ -268,13 +268,59 @@ export const CursorSettings = makeProviderSettingsSchema(
         },
       }),
     ),
+    cloudEnabled: Schema.Boolean.pipe(
+      Schema.withDecodingDefault(Effect.succeed(false)),
+      Schema.annotateKey({
+        title: "Cloud agents",
+        description: "Run Cursor turns in Cursor Cloud instead of a local SDK session.",
+        providerSettingsForm: { control: "switch", clearWhenEmpty: "omit" },
+      }),
+    ),
+    cloudRepositoryUrl: TrimmedString.pipe(
+      Schema.withDecodingDefault(Effect.succeed("")),
+      Schema.annotateKey({
+        title: "Cloud repository",
+        description: "GitHub repository URL for Cursor Cloud agents.",
+        providerSettingsForm: {
+          placeholder: "https://github.com/owner/repo",
+          clearWhenEmpty: "omit",
+        },
+      }),
+    ),
+    cloudStartingRef: TrimmedString.pipe(
+      Schema.withDecodingDefault(Effect.succeed("")),
+      Schema.annotateKey({
+        title: "Cloud starting ref",
+        description: "Optional branch, tag, or commit Cursor Cloud should start from.",
+        providerSettingsForm: {
+          placeholder: "main",
+          clearWhenEmpty: "omit",
+        },
+      }),
+    ),
+    cloudAutoCreatePr: Schema.Boolean.pipe(
+      Schema.withDecodingDefault(Effect.succeed(false)),
+      Schema.annotateKey({
+        title: "Auto-create PR",
+        description: "Allow Cursor Cloud agents to open a pull request when they finish.",
+        providerSettingsForm: { control: "switch", clearWhenEmpty: "omit" },
+      }),
+    ),
     customModels: Schema.Array(Schema.String).pipe(
       Schema.withDecodingDefault(Effect.succeed([])),
       Schema.annotateKey({ providerSettingsForm: { hidden: true } }),
     ),
   },
   {
-    order: ["apiKey", "binaryPath", "apiEndpoint"],
+    order: [
+      "apiKey",
+      "cloudEnabled",
+      "cloudRepositoryUrl",
+      "cloudStartingRef",
+      "cloudAutoCreatePr",
+      "binaryPath",
+      "apiEndpoint",
+    ],
   },
 );
 export type CursorSettings = typeof CursorSettings.Type;

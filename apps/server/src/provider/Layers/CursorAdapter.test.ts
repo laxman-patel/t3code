@@ -170,7 +170,11 @@ describe("CursorAdapterLive", () => {
         yield* Effect.sleep("10 millis");
         yield* Fiber.interrupt(eventFiber);
 
-        expect(session.resumeCursor).toEqual({ schemaVersion: 2, agentId: "agent-1" });
+        expect(session.resumeCursor).toEqual({
+          schemaVersion: 2,
+          agentId: "agent-1",
+          runtime: "local",
+        });
         expect(turn.threadId).toBe(threadId);
       }),
     );
@@ -215,6 +219,49 @@ describe("CursorAdapterLive", () => {
       apiKey: "test-cursor-api-key",
       model: { id: "default" },
       local: { cwd: process.cwd() },
+    });
+  });
+
+  it("creates an SDK cloud agent when Cursor cloud agents are enabled", async () => {
+    const agent = makeMockAgent();
+    cursorSdkMock.create.mockResolvedValue(agent);
+
+    await runAdapterEffect(
+      Effect.gen(function* () {
+        const adapter = yield* makeCursorAdapter(
+          makeCursorSettings({
+            cloudEnabled: true,
+            cloudRepositoryUrl: "https://github.com/acme/widgets",
+            cloudStartingRef: "main",
+            cloudAutoCreatePr: true,
+          }),
+        );
+        const session = yield* adapter.startSession({
+          provider: PROVIDER,
+          threadId: ThreadId.make("cursor-sdk-cloud"),
+          cwd: process.cwd(),
+          runtimeMode: "approval-required",
+          modelSelection: {
+            instanceId: "cursor" as never,
+            model: "gpt-5.5",
+          },
+        });
+
+        expect(session.resumeCursor).toEqual({
+          schemaVersion: 2,
+          agentId: "agent-1",
+          runtime: "cloud",
+        });
+      }),
+    );
+
+    expect(cursorSdkMock.create).toHaveBeenCalledWith({
+      apiKey: "test-cursor-api-key",
+      model: { id: "gpt-5.5" },
+      cloud: {
+        repos: [{ url: "https://github.com/acme/widgets", startingRef: "main" }],
+        autoCreatePR: true,
+      },
     });
   });
 });

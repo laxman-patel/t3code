@@ -23,6 +23,7 @@ import {
 } from "@t3tools/contracts";
 import {
   Agent,
+  type AgentOptions,
   type ModelSelection as CursorSdkModelSelection,
   type Run,
   type SDKAgent,
@@ -59,6 +60,7 @@ export interface CursorAdapterLiveOptions {
 interface CursorSdkResumeCursor {
   readonly schemaVersion: typeof CURSOR_SDK_RESUME_VERSION;
   readonly agentId: string;
+  readonly runtime?: "local" | "cloud" | undefined;
 }
 
 interface CursorTurnSnapshot {
@@ -104,6 +106,50 @@ function requireApiKey(settings: CursorSettings, operation: string): string {
     });
   }
   return apiKey;
+}
+
+function resolveCursorSdkRuntime(settings: CursorSettings): "local" | "cloud" {
+  return settings.cloudEnabled ? "cloud" : "local";
+}
+
+function buildCursorSdkAgentOptions(input: {
+  readonly settings: CursorSettings;
+  readonly apiKey: string;
+  readonly model: CursorSdkModelSelection;
+  readonly cwd: string;
+  readonly operation: string;
+}): AgentOptions {
+  if (!input.settings.cloudEnabled) {
+    return {
+      apiKey: input.apiKey,
+      model: input.model,
+      local: { cwd: input.cwd },
+    };
+  }
+
+  const repositoryUrl = input.settings.cloudRepositoryUrl.trim();
+  if (!repositoryUrl) {
+    throw new ProviderAdapterValidationError({
+      provider: PROVIDER,
+      operation: input.operation,
+      issue: "Cursor Cloud agents require a repository URL in Settings > Providers > Cursor.",
+    });
+  }
+
+  const startingRef = input.settings.cloudStartingRef.trim();
+  return {
+    apiKey: input.apiKey,
+    model: input.model,
+    cloud: {
+      repos: [
+        {
+          url: repositoryUrl,
+          ...(startingRef ? { startingRef } : {}),
+        },
+      ],
+      autoCreatePR: input.settings.cloudAutoCreatePr,
+    },
+  };
 }
 
 function errorDetail(error: unknown): string {
@@ -322,20 +368,18 @@ export function makeCursorAdapter(
           input.modelSelection?.instanceId === boundInstanceId ? input.modelSelection : undefined;
         const model = cursorSdkModelSelection(selected?.model, selected?.options);
         const resume = parseCursorSdkResume(input.resumeCursor);
+        const runtime = resolveCursorSdkRuntime(settings);
+        const agentOptions = buildCursorSdkAgentOptions({
+          settings,
+          apiKey,
+          model,
+          cwd,
+          operation: "startSession",
+        });
 
         const agent = yield* Effect.tryPromise({
           try: () =>
-            resume
-              ? Agent.resume(resume.agentId, {
-                  apiKey,
-                  model,
-                  local: { cwd },
-                })
-              : Agent.create({
-                  apiKey,
-                  model,
-                  local: { cwd },
-                }),
+            resume ? Agent.resume(resume.agentId, agentOptions) : Agent.create(agentOptions),
           catch: (cause) =>
             new ProviderAdapterProcessError({
               provider: PROVIDER,
@@ -357,6 +401,7 @@ export function makeCursorAdapter(
           resumeCursor: {
             schemaVersion: CURSOR_SDK_RESUME_VERSION,
             agentId: agent.agentId,
+            runtime,
           },
           createdAt: now,
           updatedAt: now,
@@ -376,7 +421,7 @@ export function makeCursorAdapter(
         yield* emit({
           ...(yield* buildEventBase({ threadId: input.threadId })),
           type: "session.started",
-          payload: { resume: { agentId: agent.agentId, resumed: Boolean(resume) } },
+          payload: { resume: { agentId: agent.agentId, resumed: Boolean(resume), runtime } },
         });
         yield* emit({
           ...(yield* buildEventBase({ threadId: input.threadId })),

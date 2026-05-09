@@ -122,6 +122,10 @@ function createBaseServerConfig(): ServerConfig {
           apiKey: "",
           binaryPath: "",
           apiEndpoint: "",
+          cloudEnabled: false,
+          cloudRepositoryUrl: "",
+          cloudStartingRef: "",
+          cloudAutoCreatePr: false,
           customModels: [],
         },
         opencode: {
